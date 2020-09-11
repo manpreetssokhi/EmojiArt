@@ -63,11 +63,11 @@
 			isa = PBXGroup;
 			children = (
 				C74660F9250B6E1E00F20F7E /* EmojiArtDocument.swift */,
+				C74660E9250B6DEB00F20F7E /* EmojiArtDocumentView.swift */,
+				C74660FB250B750E00F20F7E /* EmojiArt.swift */,
 				C74660E5250B6DEB00F20F7E /* AppDelegate.swift */,
 				C74660E7250B6DEB00F20F7E /* SceneDelegate.swift */,
 				C74660FD250B7AAE00F20F7E /* EmojiArtExtensions.swift */,
-				C74660E9250B6DEB00F20F7E /* EmojiArtDocumentView.swift */,
-				C74660FB250B750E00F20F7E /* EmojiArt.swift */,
 				C74660EB250B6DEC00F20F7E /* Assets.xcassets */,
 				C74660F0250B6DEC00F20F7E /* LaunchScreen.storyboard */,
 				C74660F3250B6DEC00F20F7E /* Info.plist */,
