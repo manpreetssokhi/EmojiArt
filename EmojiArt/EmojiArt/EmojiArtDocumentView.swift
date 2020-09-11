@@ -12,13 +12,23 @@ struct EmojiArtDocumentView: View {
     @ObservedObject var document: EmojiArtDocument // our ViewModel
     
     var body: some View {
-        HStack {
-            // map is a function on String that will turn it into array given a single character
-            ForEach(EmojiArtDocument.palette.map { String($0) }, id: \.self) { emoji in
-                Text(emoji)
+        VStack {
+            ScrollView(.horizontal) {
+                HStack {
+                    // map is a function on String that will turn it into array given a single character
+                    ForEach(EmojiArtDocument.palette.map { String($0) }, id: \.self) { emoji in
+                        Text(emoji)
+                            .font(Font.system(size: self.defaultEmojiSize))
+                    }
+                }
             }
+            .padding(.horizontal)
+            Rectangle().foregroundColor(.yellow)
+                .edgesIgnoringSafeArea([.horizontal, .bottom])
         }
     }
+    
+    private let defaultEmojiSize: CGFloat = 40
 }
 
 
