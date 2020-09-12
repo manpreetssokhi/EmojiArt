@@ -8,11 +8,13 @@
 
 import Foundation
 
-struct EmojiArt {
+struct EmojiArt: Codable  {
     var backgroundURL: URL?
     var emojis = [Emoji]()
     
-    struct Emoji: Identifiable {
+    // Codable - encode and decode JSON
+    // Hashable - can put into set
+    struct Emoji: Identifiable, Codable, Hashable {
         let text: String
         var x: Int // offset from center
         var y: Int // offset from center
@@ -29,6 +31,21 @@ struct EmojiArt {
             self.id = id
         }
     }
+    
+    var json: Data? {
+        return try? JSONEncoder().encode(self)
+    }
+    
+    // to decode - way to create EmojiArtDocument from this JSON data
+    init?(json: Data?) {
+        if json != nil, let newEmojiArt = try? JSONDecoder().decode(EmojiArt.self, from: json!) {
+            self = newEmojiArt // allowed to do this with value type and even with enums
+        } else {
+            return nil
+        }
+    }
+    
+    init() { }
     
     private var uniqueEmojiId = 0
     

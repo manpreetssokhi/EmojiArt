@@ -13,7 +13,24 @@ class EmojiArtDocument: ObservableObject {
     static let palette: String = "🤬🤯🥶🗣🐴🐻🐬🥞🍺🥊🏎🚀💻💈"
     
     // @Published because everytime emojiArt changes need to use ObservableObject to cause View to redraw
-    @Published private var emojiArt: EmojiArt = EmojiArt()
+    // @Published // workaround for property observer problem with property wrappers
+    private var emojiArt: EmojiArt {
+        willSet {
+            objectWillChange.send() // when @Published this is what is happening
+        }
+        didSet {
+            // standard database
+            UserDefaults.standard.set(emojiArt.json, forKey: EmojiArtDocument.untitled)
+            print("json = \(emojiArt.json?.utf8 ?? "nil")")
+        }
+    }
+    
+    private static let untitled = "EmojiArtDocument.Untitled"
+    
+    init() {
+        emojiArt = EmojiArt(json: UserDefaults.standard.data(forKey: EmojiArtDocument.untitled)) ?? EmojiArt()
+        fetchBackgroundImageData()
+    }
     
     // UIImage is actaully from UIKit but works well and ? because we may have link but not UIImage
     @Published private(set) var backgroundImage: UIImage?
@@ -35,7 +52,7 @@ class EmojiArtDocument: ObservableObject {
     
     func scaleEmoji(_ emoji: EmojiArt.Emoji, by scale: CGFloat) {
         if let index = emojiArt.emojis.firstIndex(matching: emoji) {
-            emojiArt.emojis[index].size = Int ((CGFloat(emojiArt.emojis[index].size) * scale).rounded(.toNearestOrEven))
+            emojiArt.emojis[index].size = Int((CGFloat(emojiArt.emojis[index].size) * scale).rounded(.toNearestOrEven))
         }
     }
     
