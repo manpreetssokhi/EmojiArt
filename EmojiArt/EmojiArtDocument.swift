@@ -7,28 +7,26 @@
 //
 
 import SwiftUI
+import Combine // for cancellable, publishing and subscribing
 
 class EmojiArtDocument: ObservableObject {
     
     static let palette: String = "🤬🤯🥶🗣🐴🐻🐬🥞🍺🥊🏎🚀💻💈"
     
     // @Published because everytime emojiArt changes need to use ObservableObject to cause View to redraw
-    // @Published // workaround for property observer problem with property wrappers
-    private var emojiArt: EmojiArt {
-        willSet {
-            objectWillChange.send() // when @Published this is what is happening
-        }
-        didSet {
-            // standard database
-            UserDefaults.standard.set(emojiArt.json, forKey: EmojiArtDocument.untitled)
-            print("json = \(emojiArt.json?.utf8 ?? "nil")")
-        }
-    }
+    @Published private var emojiArt: EmojiArt
     
     private static let untitled = "EmojiArtDocument.Untitled"
     
+    private var autosaveCancellable: AnyCancellable?
+    
     init() {
         emojiArt = EmojiArt(json: UserDefaults.standard.data(forKey: EmojiArtDocument.untitled)) ?? EmojiArt()
+        // publisher - trying to sink it to function. Sink is a subsriber
+        autosaveCancellable = $emojiArt.sink { emojiArt in
+            print("\(emojiArt.json?.utf8 ?? "nil")")
+            UserDefaults.standard.set(emojiArt.json, forKey: EmojiArtDocument.untitled)
+        }
         fetchBackgroundImageData()
     }
     
@@ -56,26 +54,48 @@ class EmojiArtDocument: ObservableObject {
         }
     }
     
-    func setBackgroundURL(_ url: URL?) {
-        emojiArt.backgroundURL = url?.imageURL
-        
-        // only job is to set the backgroundImage, ReactiveUI is set
-        fetchBackgroundImageData()
+    var backgroundURL: URL? {
+        get {
+            emojiArt.backgroundURL
+        }
+        set {
+            emojiArt.backgroundURL = newValue?.imageURL
+            // only job is to set the backgroundImage, ReactiveUI is set
+            fetchBackgroundImageData()
+            
+        }
+
     }
     
-    // would use URL Sessions if really downloading data
+    private var fetchImageCancellable: AnyCancellable?
     private func fetchBackgroundImageData() {
         backgroundImage = nil
         if let url = self.emojiArt.backgroundURL {
-            DispatchQueue.global(qos: .userInitiated).async { // do this on a background thread
-                if let imageData = try? Data(contentsOf: url) { // this could take variable time, could freeze our app - use dispatch mechanism
-                    DispatchQueue.main.async {
-                        if url == self.emojiArt.backgroundURL { // error handling to make sure image requested is still the right one
-                            self.backgroundImage = UIImage(data: imageData) // if outside of main - problem here is that this forces View to redraw BUT on a background thread - NOT ALLOWED
-                        }
-                    }
-                }
-            }
+            // URLSessions way of doing it with publisher
+            
+            // when we get a new image request cancel the old one we are not interested in
+            fetchImageCancellable?.cancel()
+            // shared can be used for simple downloads
+            // dataTaskPublisher - go out fetch and publish
+            // assign will only work if never (or UIImage is optional so can return error as nil) as the error
+            fetchImageCancellable = URLSession.shared.dataTaskPublisher(for: url)
+                // map takes a closure that gives info on existing publisher (data and URLResponse here) and it lets you return the type you wnat it to be (UIImage)
+                .map { data, URLResponse in UIImage(data: data) }
+                // to publish on main queue
+                . receive(on: DispatchQueue.main)
+                // basically if error make the response nil
+                .replaceError(with: nil)
+                .assign(to: \.backgroundImage, on: self)
+            
+//            DispatchQueue.global(qos: .userInitiated).async { // do this on a background thread
+//                if let imageData = try? Data(contentsOf: url) { // this could take variable time, could freeze our app - use dispatch mechanism
+//                    DispatchQueue.main.async {
+//                        if url == self.emojiArt.backgroundURL { // error handling to make sure image requested is still the right one
+//                            self.backgroundImage = UIImage(data: imageData) // if outside of main - problem here is that this forces View to redraw BUT on a background thread - NOT ALLOWED
+//                        }
+//                    }
+//                }
+//            }
         }
     }
 }

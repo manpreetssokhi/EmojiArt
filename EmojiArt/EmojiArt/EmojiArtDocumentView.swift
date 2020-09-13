@@ -33,16 +33,24 @@ struct EmojiArtDocumentView: View {
                             .offset(self.panOffset)
                     )
                         .gesture(self.doubleTapToZoom(in: geometry.size))
-                    ForEach(self.document.emojis) { emoji in
-                        Text(emoji.text)
-                            .font(animatableWithSize: emoji.fontSize * self.zoomScale)
-                            .position(self.position(for: emoji, in: geometry.size))
+                    if self.isLoading {
+                        // to give feedback to user
+                        Image(systemName: "hourglass").imageScale(.large).spinning()
+                    } else {
+                        ForEach(self.document.emojis) { emoji in
+                            Text(emoji.text)
+                                .font(animatableWithSize: emoji.fontSize * self.zoomScale)
+                                .position(self.position(for: emoji, in: geometry.size))
+                        }
                     }
                 }
                 .clipped()
                 .gesture(self.panGesture())
                 .gesture(self.zoomGesture())
                 .edgesIgnoringSafeArea([.horizontal, .bottom])
+                .onReceive(self.document.$backgroundImage) { image in
+                    self.zoomToFit(image, in: geometry.size)
+                }
                 // of - what kind of thing do you want to drop / "public.iamge" - a URI that specifies type of things that are images
                 // isTargeted - lets us know when user is dragging something over NOT when dropping
                 // function/closure - providers - provide information that is being dropped (transfer needs to happen asynchronously) / location - to drop
@@ -59,6 +67,11 @@ struct EmojiArtDocumentView: View {
             }
             }
         }
+    }
+    
+    // to prevent emojis showing up on blank screen
+    var isLoading: Bool {
+        document.backgroundURL != nil && document.backgroundImage == nil
     }
     
     // UI visual state and is temporary - 1.0 is normal, 2.0 is double, 0.5 is half original
@@ -132,7 +145,7 @@ struct EmojiArtDocumentView: View {
     
     private func drop(providers: [NSItemProvider], at location: CGPoint) -> Bool {
         var found = providers.loadFirstObject(ofType: URL.self) { url in
-            self.document.setBackgroundURL(url)
+            self.document.backgroundURL = url
         }
         if !found {
             found = providers.loadObjects(ofType: String.self) { string in
