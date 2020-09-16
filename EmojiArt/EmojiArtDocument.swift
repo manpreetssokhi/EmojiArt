@@ -9,29 +9,49 @@
 import SwiftUI
 import Combine // for cancellable, publishing and subscribing
 
-class EmojiArtDocument: ObservableObject {
+class EmojiArtDocument: ObservableObject, Hashable, Identifiable {
+    // strategy (for Hashable and Equatable) would only work for a reference type aka class becasue we are seeing same version of it in heap
+    // stub form Hashable issue of not being Equatable
+    static func == (lhs: EmojiArtDocument, rhs: EmojiArtDocument) -> Bool {
+        lhs.id == rhs.id
+    }
+    
+    // Hashable protocol has one function - hash and to be Hashable need to implement Equatable
+    // hasher.combine takes something that itself is hashable and it combines multiple things inside object to make something hashable
+    // UUID is struct that generates a unique thing - UUID is hashable
+    let id: UUID
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
     
     static let palette: String = "🤬🤯🥶🗣🐴🐻🐬🥞🍺🥊🏎🚀💻💈"
     
     // @Published because everytime emojiArt changes need to use ObservableObject to cause View to redraw
     @Published private var emojiArt: EmojiArt
     
-    private static let untitled = "EmojiArtDocument.Untitled"
-    
     private var autosaveCancellable: AnyCancellable?
     
-    init() {
-        emojiArt = EmojiArt(json: UserDefaults.standard.data(forKey: EmojiArtDocument.untitled)) ?? EmojiArt()
+    // passing in id to store documents with unique name rather than "EmojiArtDocument.Untitled"
+    // making this an optional allows us to call init with nothing or a UUID or a nil - adds flexibility
+    init(id: UUID? = nil) {
+        self.id = id ?? UUID()
+        let defaultsKey = "EmojiArtDocument.\(self.id.uuidString)"
+        emojiArt = EmojiArt(json: UserDefaults.standard.data(forKey: defaultsKey)) ?? EmojiArt()
         // publisher - trying to sink it to function. Sink is a subsriber
         autosaveCancellable = $emojiArt.sink { emojiArt in
             print("\(emojiArt.json?.utf8 ?? "nil")")
-            UserDefaults.standard.set(emojiArt.json, forKey: EmojiArtDocument.untitled)
+            UserDefaults.standard.set(emojiArt.json, forKey: defaultsKey)
         }
         fetchBackgroundImageData()
     }
     
     // UIImage is actaully from UIKit but works well and ? because we may have link but not UIImage
     @Published private(set) var backgroundImage: UIImage?
+    
+    // UI visual state and is temporary - 1.0 is normal, 2.0 is double, 0.5 is half original
+    @Published var steadyStateZoomScale: CGFloat = 1.0
+    // this for the pan
+    @Published var steadyStatePanOffset: CGSize = .zero
     
     var emojis: [EmojiArt.Emoji] { emojiArt.emojis } // return emojiArt - a read only access to model
     

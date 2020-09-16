@@ -32,7 +32,7 @@ struct PaletteChooser: View {
                 }
                 // $ on state is binding
                 // can use popover or sheet
-                .sheet(isPresented: $showPaletteEditor) {
+                .popover(isPresented: $showPaletteEditor) {
                     PaletteEditor(chosenPalette: self.$chosenPalette, isShowing: self.$showPaletteEditor)
                         .environmentObject(self.document)
                         .frame(minWidth: 300, minHeight: 500)
